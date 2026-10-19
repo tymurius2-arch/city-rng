@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Город удачи</title>
+<style>
+  :root { --bg:#0d1020; --panel:#161a30; --panel2:#1f2442; --fg:#eef0ff; --muted:#8c92b8; --gold:#ffcf40; --ok:#4ade80; --bad:#f87171; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; overflow-x:hidden; }
+  button { font:inherit; }
+  header { position:sticky; top:0; z-index:20; background:linear-gradient(#0d1020 75%, #0d102000); padding:10px 16px 14px; }
+  .hrow { max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  h1 { margin:0; font-size:20px; font-weight:900; white-space:nowrap; }
+  .money { margin-left:auto; text-align:right; }
+  #money { font-size:26px; font-weight:900; color:var(--gold); font-variant-numeric:tabular-nums; }
+  #income { font-size:13px; color:var(--ok); font-variant-numeric:tabular-nums; }
+  #mult { font-size:12px; color:var(--muted); }
+
+  #skyline { max-width:1100px; margin:0 auto; height:90px; display:flex; align-items:flex-end; gap:2px; overflow-x:auto; overflow-y:hidden;
+             background:linear-gradient(#1b1f45, #2b2560 70%, #3a2a5f); border-radius:14px; padding:0 8px; position:relative; scrollbar-width:thin; }
+  #skyline .b { flex:0 0 auto; width:56px; height:80px; } #skyline .b svg { width:100%; height:100%; display:block; }
+  #skyline .empty { color:var(--muted); font-size:14px; margin:auto; }
+
+  nav { max-width:1100px; margin:12px auto 0; padding:0 16px; display:flex; gap:6px; flex-wrap:wrap; }
+  nav button { flex:1; min-width:110px; background:var(--panel); color:var(--fg); border:none; border-radius:10px; padding:10px; cursor:pointer; font-weight:700; }
+  nav button.on { background:var(--gold); color:#2a1d00; }
+  main { max-width:1100px; margin:12px auto 60px; padding:0 16px; }
+  .sec[hidden] { display:none; }
+
+  .toggles { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .tgl { background:var(--panel); color:var(--muted); border:1px solid var(--panel2); border-radius:999px; padding:7px 14px; cursor:pointer; font-size:14px; }
+  .tgl.on { color:var(--fg); border-color:var(--gold); }
+
+  .cases { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:10px; }
+  .case { background:var(--panel); border-radius:16px; padding:12px; text-align:center; position:relative; border:2px solid transparent; transition:border-color .2s, opacity .2s; }
+  .case.can { border-color:#ffcf4055; }
+  .case.locked { opacity:.45; }
+  .case .box { width:76px; height:76px; margin:4px auto 6px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:40px; position:relative; }
+  .case .box::after { content:''; position:absolute; left:0; right:0; top:44%; height:8px; background:rgba(0,0,0,.25); }
+  .case .nm { font-weight:800; font-size:15px; }
+  .case .rg { font-size:12px; color:var(--muted); margin:2px 0 8px; }
+  .case .open { width:100%; border:none; border-radius:10px; padding:9px; font-weight:800; cursor:pointer; background:var(--gold); color:#2a1d00; }
+  .case .open:disabled { background:var(--panel2); color:var(--muted); cursor:default; }
+  .case .info { position:absolute; top:8px; right:8px; background:var(--panel2); color:var(--muted); border:none; border-radius:50%; width:26px; height:26px; cursor:pointer; font-size:13px; }
+  .case .free { position:absolute; top:8px; left:8px; background:var(--ok); color:#052e16; font-size:11px; font-weight:800; border-radius:6px; padding:2px 6px; }
+
+  .card { --rc:#9ca3af; background:var(--panel2); border-radius:12px; padding:6px 6px 8px; text-align:center; position:relative; border:2px solid var(--rc); box-shadow:0 0 14px -4px var(--rc) inset; overflow:hidden; }
+  .card svg { width:100%; height:auto; display:block; }
+  .card .t { font-size:12px; font-weight:700; line-height:1.15; min-height:2.3em; display:flex; align-items:center; justify-content:center; }
+  .card .r { font-size:10px; font-weight:800; color:var(--rc); text-transform:uppercase; letter-spacing:.5px; }
+  .card .inc { font-size:12px; color:var(--ok); font-variant-numeric:tabular-nums; }
+  .card .cnt { position:absolute; top:4px; left:6px; font-weight:900; font-size:14px; text-shadow:0 1px 3px #000; }
+  .card .sell { margin-top:5px; width:100%; border:none; border-radius:7px; padding:5px; font-size:11px; background:#00000040; color:var(--muted); cursor:pointer; }
+  .card .sell:hover { color:var(--fg); }
+  .card.unk svg { filter:brightness(0) opacity(.35); }
+  .card.unk { --rc:#3a3f63 !important; }
+  .r0 { --rc:#9ca3af; } .r1 { --rc:#4ade80; } .r2 { --rc:#60a5fa; } .r3 { --rc:#c084fc; } .r4 { --rc:#fbbf24; } .r5 { --rc:#f43f5e; }
+  .r6 { --rc:#fff1a8; animation:rainbow 2.5s linear infinite; }
+  @keyframes rainbow { 0%{border-color:#f43f5e} 25%{border-color:#fbbf24} 50%{border-color:#4ade80} 75%{border-color:#60a5fa} 100%{border-color:#f43f5e} }
+  .card.r4::before, .card.r5::before, .card.r6::before { content:''; position:absolute; inset:-50%; background:linear-gradient(115deg, transparent 45%, rgba(255,255,255,.18) 50%, transparent 55%); animation:shine 3s linear infinite; pointer-events:none; }
+  @keyframes shine { from { transform:translateX(-40%); } to { transform:translateX(40%); } }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; }
+  .bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px; color:var(--muted); font-size:14px; }
+  .btn { border:none; border-radius:10px; padding:9px 14px; font-weight:800; cursor:pointer; background:var(--gold); color:#2a1d00; }
+  .btn.alt { background:var(--panel2); color:var(--fg); }
+  .btn:disabled { opacity:.4; cursor:default; }
+  h2 { font-size:18px; margin:18px 0 8px; display:flex; align-items:center; gap:8px; }
+  h2 small { font-size:13px; color:var(--muted); font-weight:400; }
+
+  .reb { background:var(--panel); border-radius:18px; padding:20px; text-align:center; max-width:560px; margin:0 auto; }
+  .reb .big { font-size:46px; }
+  .reb ul { text-align:left; color:var(--muted); line-height:1.8; }
+  .reb b { color:var(--fg); }
+
+  /* окно открытия */
+  #modal { position:fixed; inset:0; background:rgba(5,7,18,.88); z-index:50; display:none; align-items:center; justify-content:center; padding:16px; }
+  #modal.show { display:flex; }
+  .mbox { width:min(760px,100%); background:var(--panel); border-radius:20px; padding:18px; text-align:center; position:relative; max-height:92vh; overflow:auto; }
+  .mbox h3 { margin:0 0 10px; }
+  .x { position:absolute; top:10px; right:12px; background:none; border:none; color:var(--muted); font-size:24px; cursor:pointer; }
+  .reel { position:relative; height:200px; overflow:hidden; border-radius:14px; background:#0b0e1f; }
+  .reel::after { content:''; position:absolute; left:50%; top:0; bottom:0; width:3px; margin-left:-1.5px; background:var(--gold); box-shadow:0 0 12px var(--gold); z-index:2; }
+  .strip { display:flex; gap:8px; position:absolute; top:12px; left:0; will-change:transform; }
+  .strip .card { flex:0 0 120px; }
+  #result { margin-top:14px; min-height:60px; }
+  #result .rname { font-size:24px; font-weight:900; }
+  #result .rr { font-weight:800; }
+  .mbtns { display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap; }
+  .odds { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; text-align:center; }
+  .odds .ch { font-size:12px; font-weight:800; margin-top:2px; }
+
+  #toast { position:fixed; left:50%; bottom:18px; transform:translateX(-50%) translateY(140px); background:var(--panel2); border:1px solid var(--gold); padding:11px 16px; border-radius:12px; font-weight:700; transition:transform .3s; z-index:60; max-width:calc(100vw - 32px); text-align:center; }
+  #toast.show { transform:translateX(-50%) translateY(0); }
+  .conf { position:fixed; top:-30px; font-size:24px; pointer-events:none; animation:fall linear forwards; z-index:70; }
+  @keyframes fall { to { transform:translateY(115vh) rotate(600deg); } }
+  .shake { animation:shake .5s; } @keyframes shake { 20%{transform:translate(-6px,2px)} 40%{transform:translate(6px,-2px)} 60%{transform:translate(-4px,1px)} 80%{transform:translate(4px,0)} }
+
+  /* анимации в рисунках */
+  .blink { animation:blink 1.4s steps(2) infinite; }
+  @keyframes blink { 50% { opacity:.15; } }
+  .smoke { animation:smoke 3s ease-out infinite; transform-box:fill-box; transform-origin:center; }
+  @keyframes smoke { from { transform:translateY(0) scale(.6); opacity:.7; } to { transform:translateY(-14px) scale(1.4); opacity:0; } }
+  .twinkle { animation:tw 2s ease-in-out infinite; }
+  @keyframes tw { 50% { opacity:.2; } }
+  .float { animation:fl 3s ease-in-out infinite; }
+  @keyframes fl { 50% { transform:translateY(-3px); } }
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1>🏙️ Город удачи</h1>
+    <div class="money">
+      <div id="money">0</div>
+      <div id="income">+0 / сек</div>
+      <div id="mult"></div>
+    </div>
+  </div>
+  <div id="skyline"></div>
+</header>
+
+<nav>
+  <button data-t="cases" class="on">📦 Кейсы</button>
+  <button data-t="inv">🏘️ Мои здания</button>
+  <button data-t="cat">📖 Каталог</button>
+  <button data-t="reb">♻️ Перерождение</button>
+</nav>
+
+<main>
+  <section class="sec" id="s-cases">
+    <div class="toggles">
+      <button class="tgl" id="tFast">⚡ Быстрое открытие</button>
+      <button class="tgl" id="tAuto">🔁 Авто-открытие</button>
+    </div>
+    <div class="cases" id="cases"></div>
+  </section>
+
+  <section class="sec" id="s-inv" hidden>
+    <div class="bar">
+      <span>Места: <b id="slots"></b></span>
+      <button class="btn" id="buySlot"></button>
+      <button class="btn alt" id="sellWorst">Продать худшее</button>
+    </div>
+    <div class="grid" id="inv"></div>
+  </section>
+
+  <section class="sec" id="s-cat" hidden>
+    <div class="bar"><span>Найдено: <b id="found"></b></span></div>
+    <div id="cat"></div>
+  </section>
+
+  <section class="sec" id="s-reb" hidden>
+    <div class="reb" id="reb"></div>
+  </section>
+</main>
+
+<div id="modal"><div class="mbox" id="mbox"></div></div>
+<div id="toast"></div>
+
+<script>
+// ===================== ДАННЫЕ =====================
+const RAR = [
+  { n:'Обычное',      w:45   },
+  { n:'Необычное',    w:27   },
+  { n:'Редкое',       w:15   },
+  { n:'Эпическое',    w:8.45 },
+  { n:'Легендарное',  w:3.8  },
+  { n:'Мифическое',   w:0.7  },
+  { n:'Секретное',    w:0.05 },
+];
+// стили рисунков
+const ST = {
+  wood:   { wall:['#8b5a2b','#a0522d','#7a4a24'], roof:'#5b3a1a', rt:'tri',  f:[1,2],  w:[26,40], win:'#ffd36b', lit:.5, ex:['chimney'] },
+  village:{ wall:['#e9d8b4','#d6c39a','#f0e2c0'], roof:'#8b3a2a', rt:'tri',  f:[1,3],  w:[28,44], win:'#ffe08a', lit:.5, ex:['chimney'] },
+  brick:  { wall:['#a33b2a','#b5452f','#8f3324'], roof:'#5a2018', rt:'flat', f:[2,5],  w:[28,44], win:'#ffe7a3', lit:.55 },
+  cottage:{ wall:['#f5f0e6','#dfe9f0','#f3e1d2'], roof:'#3b5b8c', rt:'tri',  f:[1,3],  w:[30,50], win:'#bfe3ff', lit:.4, ex:['chimney'] },
+  town:   { wall:['#e8c07a','#9fc5a8','#e3a6a1','#a7b9e0'], roof:'#6b4a3a', rt:'flat', f:[2,5], w:[30,50], win:'#fff3b0', lit:.6 },
+  panel:  { wall:['#b8bcc6','#c9c3b5','#a9b3bf'], roof:'#6d717c', rt:'flat', f:[5,12], w:[34,54], win:'#ffe28a', lit:.45, ww:6 },
+  factory:{ wall:['#7d8597','#8a7f72','#6f7a86'], roof:'#4a5060', rt:'flat', f:[2,5],  w:[40,60], win:'#ffcf6b', lit:.4, ex:['stacks'] },
+  office: { wall:['#5b7aa6','#4f6d94','#6487b3'], roof:'#2f3f57', rt:'flat', f:[6,14], w:[30,46], win:'#cfe8ff', lit:.65, ww:6 },
+  classic:{ wall:['#efe6d2','#e6dcc4'], roof:'#c9b98f', rt:'dome', f:[2,5], w:[40,60], win:'#ffe9a8', lit:.5, ex:['columns'] },
+  glass:  { wall:['#4fb3c9','#3a9fbd','#62c3d6'], roof:'#2a6f80', rt:'flat', f:[8,18], w:[26,40], win:'#e6fbff', lit:.7, ww:5, ex:['shine'] },
+  tower:  { wall:['#3f5f86','#2f4b6e','#45688f'], roof:'#22344d', rt:'spire', f:[14,30], w:[20,32], win:'#ffe9a3', lit:.6, ww:5 },
+  castle: { wall:['#a8a29e','#9a948e','#b3ada6'], roof:'#5b2a86', rt:'battle', f:[2,5], w:[40,62], win:'#ffcf6b', lit:.5, ex:['turrets'] },
+  wonder: { wall:['#e9d39a','#f2e3b6','#dcc382'], roof:'#c9a94f', rt:'pyramid', f:[2,6], w:[44,66], win:'#fff4c2', lit:.4, ex:['columns'] },
+  mega:   { wall:['#334a6b','#2b3d59','#3c5577'], roof:'#1d2a3d', rt:'antenna', f:[18,38], w:[22,34], win:'#ffe28a', lit:.65, ww:5 },
+  neon:   { wall:['#1a1033','#160d2b','#20123d'], roof:'#120a24', rt:'taper', f:[10,26], w:[24,38], win:'#ff4fd8', win2:'#3ef0ff', lit:.75, ww:5, ex:['neon'] },
+  future: { wall:['#e8f3f1','#d9efe9','#f1f7f6'], roof:'#7fd1c1', rt:'domeTop', f:[8,22], w:[24,40], win:'#7fe0ff', lit:.7, ww:6, ex:['green'] },
+  under:  { wall:['#2b6f8a','#246279','#327c98'], roof:'#9fe6ff', rt:'glassDome', f:[2,8], w:[34,56], win:'#9ff3ff', lit:.8, ex:['bubbles'], bg:'water' },
+  cloud:  { wall:['#f3f6ff','#e9eefc','#fdfdff'], roof:'#8fb6ff', rt:'tri', f:[2,8], w:[28,46], win:'#ffe9a8', lit:.6, ex:['cloud'], up:14 },
+  space:  { wall:['#c9d2e3','#b8c3d8','#d6dded'], roof:'#7c8aa5', rt:'antenna', f:[4,14], w:[26,44], win:'#7ff7ff', lit:.8, ex:['ring','stars'], up:12, bg:'space' },
+  galaxy: { wall:['#2b1f5c','#3a2a78','#23194d'], roof:'#8a6bff', rt:'crystal', f:[8,24], w:[24,40], win:'#d2b8ff', lit:.85, ww:5, ex:['ring','stars','neon2'], up:10, bg:'space' },
+  divine: { wall:['#fff4d1','#fff8e6','#ffeec0'], roof:'#ffcf40', rt:'crystal', f:[6,20], w:[26,44], win:'#fff', lit:.9, ex:['rays','cloud'], up:12 },
+};
+const CASES = [
+  { n:'Ржавый',          e:'🪵', c:'#7a4a24', st:'wood',    b:['Будка','Шалаш','Сарай','Изба','Банька','Мельница'] },
+  { n:'Деревянный',      e:'🌲', c:'#8b5a2b', st:'wood',    b:['Курятник','Дровяник','Сторожка','Хата','Дача','Водонапорная башня'] },
+  { n:'Деревенский',     e:'🌾', c:'#b08a3e', st:'village', b:['Колодец-домик','Амбар','Сельпо','Почта','Сельсовет','Церквушка'] },
+  { n:'Кирпичный',       e:'🧱', c:'#a33b2a', st:'brick',   b:['Гараж','Ларёк','Хрущёвка','Пекарня','Аптека','Пожарная часть'] },
+  { n:'Пригородный',     e:'🏡', c:'#3b5b8c', st:'cottage', b:['Коттедж','Таунхаус','Автомойка','Спортзал','Школа','Особняк'] },
+  { n:'Городской',       e:'🏪', c:'#c98b3a', st:'town',    b:['Магазин','Кафе','Кинотеатр','Библиотека','Больница','Ратуша'] },
+  { n:'Спальный район',  e:'🏢', c:'#7d828f', st:'panel',   b:['Панелька','Девятиэтажка','Общежитие','Поликлиника','Торговый центр','Жилой комплекс'] },
+  { n:'Промышленный',    e:'🏭', c:'#5f6675', st:'factory', b:['Склад','Цех','Котельная','Завод','Электростанция','Морской порт'] },
+  { n:'Деловой',         e:'💼', c:'#4f6d94', st:'office',  b:['Офис','Банк','Бизнес-центр','Отель','Биржа','Штаб-квартира'] },
+  { n:'Столичный',       e:'🏛️', c:'#bfae86', st:'classic', b:['Министерство','Театр','Музей','Опера','Академия','Парламент'] },
+  { n:'Стеклянный',      e:'🔷', c:'#3a9fbd', st:'glass',   b:['Стеклянный офис','Апарт-отель','Медиахолдинг','IT-парк','Башня-лофт','Хрустальная башня'] },
+  { n:'Небоскрёбный',    e:'🌆', c:'#2f4b6e', st:'tower',   b:['Высотка','Башня-близнец','Башня-игла','Бизнес-сити','Мегабашня','Небесный шпиль'] },
+  { n:'Королевский',     e:'👑', c:'#5b2a86', st:'castle',  b:['Форт','Замок','Крепость','Дворец','Кремль','Королевская цитадель'] },
+  { n:'Чудеса света',    e:'🗿', c:'#c9a94f', st:'wonder',  b:['Маяк','Пагода','Пирамида','Храм','Колизей','Тадж-Махал'] },
+  { n:'Мегаполис',       e:'🌃', c:'#1d2a3d', st:'mega',    b:['Аэропорт','Вокзал','Мегамолл','Арена','Небоскрёб-гигант','Бурдж-Халифа'] },
+  { n:'Неоновый',        e:'🌈', c:'#c026d3', st:'neon',    b:['Неон-бар','Кибер-клуб','Голо-театр','Неон-тауэр','Кибер-корпорация','Неоновый шпиль'] },
+  { n:'Футуристичный',   e:'🧬', c:'#14b8a6', st:'future',  b:['Купол-дом','Эко-башня','Робо-завод','Вертикальная ферма','Аркология','Город-улей'] },
+  { n:'Подводный',       e:'🌊', c:'#0e7490', st:'under',   b:['Батискаф-дом','Подводный купол','Коралловый отель','Океанариум','Глубинная станция','Атлантида'] },
+  { n:'Облачный',        e:'☁️', c:'#60a5fa', st:'cloud',   b:['Облачная хижина','Небесный мост','Парящий сад','Летающий замок','Небесный остров','Облачный дворец'] },
+  { n:'Орбитальный',     e:'🛰️', c:'#64748b', st:'space',   b:['Спутник','Космостанция','Орбитальный отель','Лунная база','Марсианская колония','Космический лифт'] },
+  { n:'Галактический',   e:'🌌', c:'#6d28d9', st:'galaxy',  b:['Звёздная верфь','Кольцо-мир','Звёздная крепость','Галактический совет','Сфера Дайсона','Пульсар-цитадель'] },
+  { n:'Божественный',    e:'✨', c:'#eab308', st:'divine',  b:['Храм вечности','Хрустальный Олимп','Обитель богов','Чертог времени','Нексус Вселенной','Трон Мироздания'] },
+];
+// цены кейсов: от 30 до 10 000 000
+CASES.forEach((c,i) => {
+  c.price = i === CASES.length-1 ? 1e7 : niceRound(30 * Math.pow(1e7/30, i/(CASES.length-1)));
+});
+function niceRound(x) { const p = Math.pow(10, Math.floor(Math.log10(x)) - 1); return Math.round(x/p)*p; }
+const SHAPE = [1, 1.4, 2, 3, 5, 10];
+function baseIncome(ci) { // доход растёт чуть медленнее цены: дорогие кейсы окупаются дольше
+  return 3 * (CASES[ci].price/30) / Math.pow(60, ci/(CASES.length-1));
+}
+function incomeOf(ci, p) { // p = 0..5, 6 = секретное
+  if (ci === 0) return [3,4,5,6,8,10,50][p];
+  return p === 6 ? baseIncome(ci)*SHAPE[5]*5 : baseIncome(ci)*SHAPE[p];
+}
+const nameOf = (ci,p) => p === 6 ? 'Золотой ' + CASES[ci].b[5] : CASES[ci].b[p];
+
+// ===================== РИСУНКИ ЗДАНИЙ =====================
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const artCache = {};
+function art(ci, p, full) {
+  const key = ci + '-' + p + (full ? 'f' : ''); if (artCache[key]) return artCache[key];
+  const secret = p === 6, pi = Math.min(p, 5);
+  const st = ST[CASES[ci].st], R = rng(ci*1013 + pi*71 + 7);
+  const t = pi/5, o = [];
+  const gold = secret;
+  const wall = gold ? '#f5c542' : st.wall[Math.floor(R()*st.wall.length)];
+  const dark = gold ? '#a8740a' : shade(wall, -0.35);
+  const roofC = gold ? '#ffe27a' : st.roof;
+  const up = st.up || 0, ground = 96 - up;
+  // фон
+  if (st.bg === 'space' || st.ex?.includes('stars')) for (let i=0;i<14;i++) o.push(`<circle cx="${R()*100}" cy="${R()*70}" r="${R()*.9+.3}" fill="#fff" class="twinkle" style="animation-delay:${R()*2}s"/>`);
+  if (st.bg === 'water') { o.push(`<rect x="-100" y="-100" width="300" height="300" fill="#0c4a6e" opacity=".55"/>`); o.push(`<path d="M0 96 Q25 90 50 95 T100 94 V100 H0Z" fill="#d6c08a"/>`); }
+  if (st.ex?.includes('rays')) for (let i=0;i<12;i++) { const a = i/12*Math.PI*2; o.push(`<line x1="50" y1="45" x2="${50+Math.cos(a)*60}" y2="${45+Math.sin(a)*60}" stroke="#ffe27a" stroke-width="3" opacity=".25"/>`); }
+  // размеры
+  let floors = Math.round(st.f[0] + (st.f[1]-st.f[0])*t + R()*1.2);
+  const tallRoof = ['spire','antenna','crystal','pyramid','domeTop'].includes(st.rt);
+  const maxH = (tallRoof ? 62 : 76) - up;
+  let fh = Math.min(st.ww ? 4.2 : 9, maxH/floors);
+  const w = st.w[0] + (st.w[1]-st.w[0])*t;
+  const H = floors*fh, x0 = 50 - w/2, top = ground - H;
+  // облако / платформа под зданием
+  if (st.ex?.includes('cloud')) { o.push(`<g class="float">${cloud(50, ground+3, w*0.9)}</g>`); }
+  if (st.bg === 'space') o.push(`<path d="M${x0-8} ${ground} L${x0+w+8} ${ground} L${50+w*0.25} ${ground+10} L${50-w*0.25} ${ground+10}Z" fill="#6b7280"/>`);
+  // крылья
+  if (pi >= 2 && st.rt !== 'taper') {
+    const ww = w*0.42, wh = Math.max(fh*1.5, H*0.45);
+    o.push(rect(x0-ww+2, ground-wh, ww, wh, shade(wall,-0.12), dark));
+    o.push(windowsGrid(x0-ww+2, ground-wh, ww, wh, Math.max(1,Math.round(wh/fh)), st, R, gold));
+    if (pi >= 4) { o.push(rect(x0+w-2, ground-wh, ww, wh, shade(wall,-0.12), dark)); o.push(windowsGrid(x0+w-2, ground-wh, ww, wh, Math.max(1,Math.round(wh/fh)), st, R, gold)); }
+  }
+  // заводские трубы
+  if (st.ex?.includes('stacks')) for (let k=0;k<1+Math.ceil(pi/2);k++) {
+    const sx = x0 + w*0.15 + k*9, sh = 20 + pi*4;
+    o.push(`<rect x="${sx}" y="${top-sh+6}" width="5" height="${sh}" fill="#9ca3af" stroke="#4b5563" stroke-width=".6"/><rect x="${sx}" y="${top-sh+10}" width="5" height="3" fill="#ef4444"/>`);
+    o.push(`<circle cx="${sx+2.5}" cy="${top-sh+3}" r="3" fill="#cbd5e1" class="smoke" style="animation-delay:${k*.7}s"/>`);
+  }
+  // корпус
+  if (st.rt === 'taper') {
+    o.push(`<path d="M${x0} ${ground} L${x0+w} ${ground} L${x0+w*0.78} ${top} L${x0+w*0.22} ${top}Z" fill="${wall}" stroke="${dark}" stroke-width=".8"/>`);
+    o.push(windowsGrid(x0+w*0.26, top, w*0.48, H, floors, st, R, gold));
+  } else {
+    o.push(rect(x0, top, w, H, wall, dark));
+    if (st.ex?.includes('shine')) o.push(`<path d="M${x0+w*0.1} ${top} L${x0+w*0.35} ${top} L${x0+w*0.1} ${top+H*0.6}Z" fill="#fff" opacity=".18"/>`);
+    o.push(windowsGrid(x0, top, w, H, floors, st, R, gold));
+  }
+  if (st.ex?.includes('columns')) { const n = 4 + pi; for (let k=0;k<n;k++) o.push(`<rect x="${x0+3+k*(w-6)/(n-1)-1.2}" y="${ground-Math.min(H,18)}" width="2.4" height="${Math.min(H,18)}" fill="#fffaf0" opacity=".9"/>`); o.push(`<rect x="${x0-2}" y="${ground-Math.min(H,18)-2.5}" width="${w+4}" height="2.5" fill="${roofC}"/>`); }
+  if (st.ex?.includes('neon')) o.push(`<path d="M${x0} ${ground} L${x0+w*0.22} ${top} L${x0+w*0.78} ${top} L${x0+w} ${ground}" fill="none" stroke="#ff4fd8" stroke-width="1.4" opacity=".9"/><path d="M${x0+2} ${ground} L${x0+w*0.24} ${top+2}" stroke="#3ef0ff" stroke-width="1" />`);
+  if (st.ex?.includes('neon2')) o.push(`<rect x="${x0}" y="${top}" width="${w}" height="${H}" fill="none" stroke="#b892ff" stroke-width="1.2"/>`);
+  if (st.ex?.includes('green')) for (let k=0;k<floors;k+=3) o.push(`<rect x="${x0-1.5}" y="${top+k*fh+fh-1.5}" width="${w+3}" height="1.8" fill="#34d399"/>`);
+  // дверь
+  if (!st.up && st.bg !== 'water' && floors <= 12) o.push(`<rect x="${50-3}" y="${ground-Math.min(7,fh*0.9)}" width="6" height="${Math.min(7,fh*0.9)}" fill="${shade(wall,-0.5)}" rx="1"/>`);
+  // крыша
+  o.push(roof(st.rt, x0, top, w, roofC, dark, pi, gold));
+  if (st.ex?.includes('turrets')) [x0-3, x0+w-5].forEach(tx => { o.push(`<rect x="${tx}" y="${top-10-pi*2}" width="8" height="${H+10+pi*2}" fill="${shade(wall,-0.08)}" stroke="${dark}" stroke-width=".7"/><path d="M${tx-1} ${top-10-pi*2} L${tx+4} ${top-20-pi*2} L${tx+9} ${top-10-pi*2}Z" fill="${roofC}"/>`); });
+  if (st.ex?.includes('chimney') && st.rt === 'tri') { const cx = x0 + w*0.7; o.push(`<rect x="${cx}" y="${top-w*0.3}" width="4" height="${w*0.22}" fill="#6b4a3a"/><circle cx="${cx+2}" cy="${top-w*0.3-2}" r="2.5" fill="#d1d5db" class="smoke"/>`); }
+  if (st.ex?.includes('bubbles')) for (let k=0;k<5;k++) o.push(`<circle cx="${20+R()*60}" cy="${20+R()*50}" r="${1+R()*2}" fill="none" stroke="#bff6ff" stroke-width=".6" class="smoke" style="animation-delay:${R()*3}s"/>`);
+  if (st.ex?.includes('ring')) o.push(`<ellipse cx="50" cy="${top+H*0.45}" rx="${w*0.9}" ry="${w*0.18}" fill="none" stroke="${gold?'#ffe27a':'#a5b4fc'}" stroke-width="1.6" opacity=".85"/>`);
+  if (pi === 5 || secret) { // флаг на самом редком
+    const fy = top - 14;
+    o.push(`<line x1="${x0+w-3}" y1="${top}" x2="${x0+w-3}" y2="${fy}" stroke="#ddd" stroke-width=".8"/><path d="M${x0+w-3} ${fy} l8 2.5 l-8 2.5Z" fill="${gold?'#fff':'#ef4444'}"/>`);
+  }
+  if (secret) for (let k=0;k<7;k++) o.push(`<text x="${10+R()*80}" y="${10+R()*80}" font-size="${4+R()*4}" fill="#fff6c2" class="twinkle" style="animation-delay:${R()*2}s">✦</text>`);
+  // подгоняем рамку под здание, чтобы маленькие домики были крупными
+  const roofH = { tri:w*0.42, flat:6, dome:w*0.28+8, spire:22+pi*2, antenna:18+pi*2, battle:20+pi*2, pyramid:w*0.55, taper:14+pi*2, domeTop:w*0.36, glassDome:w*0.35, crystal:24+pi*2 }[st.rt] || 6;
+  let peak = top - Math.max(roofH, (pi === 5 || secret) ? 14 : 0, st.ex?.includes('stacks') ? 24 + pi*4 : 0, st.ex?.includes('turrets') ? 20 + pi*2 : 0, st.ex?.includes('chimney') ? w*0.3 + 4 : 0) - 4;
+  const half = (pi >= 2 && st.rt !== 'taper' ? w/2 + w*0.42 : w/2) + (st.ex?.includes('ring') ? w*0.4 : 0) + 5;
+  const bottom = ground + (st.ex?.includes('cloud') ? 10 : st.bg === 'space' ? 11 : 4);
+  const side = Math.max(48, bottom - peak, half*2);
+  const vb = full ? '15 0 70 100' : `${50 - side/2} ${bottom - side} ${side} ${side}`;
+  const svg = `<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg">${o.join('')}</svg>`;
+  artCache[key] = svg; return svg;
+}
+function rect(x,y,w,h,f,s) { return `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}" stroke="${s}" stroke-width=".8"/>`; }
+function cloud(cx, cy, w) { return `<ellipse cx="${cx}" cy="${cy}" rx="${w*0.65}" ry="6" fill="#fff"/><circle cx="${cx-w*0.3}" cy="${cy-2}" r="6" fill="#fff"/><circle cx="${cx+w*0.25}" cy="${cy-3}" r="7" fill="#fff"/><circle cx="${cx}" cy="${cy-4}" r="7" fill="#f8fafc"/>`; }
+function windowsGrid(x, y, w, h, rows, st, R, gold) {
+  const o = [], ww = st.ww || 8, cols = Math.max(1, Math.floor((w-2)/ww)), fh = h/rows;
+  const cw = (w - 2) / cols, wW = Math.max(1.2, cw*0.55), wH = Math.max(1, fh*0.55);
+  for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) {
+    const lit = R() < st.lit;
+    const col = gold ? (lit ? '#fffbe6' : '#c99a1d') : lit ? (st.win2 && R()<.4 ? st.win2 : st.win) : 'rgba(0,0,0,.35)';
+    o.push(`<rect x="${x+1+c*cw+(cw-wW)/2}" y="${y+r*fh+(fh-wH)/2}" width="${wW}" height="${wH}" fill="${col}"/>`);
+  }
+  return o.join('');
+}
+function roof(type, x, top, w, c, dark, pi, gold) {
+  switch (type) {
+    case 'tri': return `<path d="M${x-3} ${top} L50 ${top-w*0.42} L${x+w+3} ${top}Z" fill="${c}" stroke="${dark}" stroke-width=".8"/>`;
+    case 'flat': return `<rect x="${x-1.5}" y="${top-2}" width="${w+3}" height="2.5" fill="${c}"/>` + (pi>=3 ? `<rect x="${x+w*0.2}" y="${top-6}" width="${w*0.25}" height="4" fill="${c}"/>` : '');
+    case 'dome': { const r = w*0.28; return `<rect x="${x-2}" y="${top-2.5}" width="${w+4}" height="2.5" fill="${c}"/><path d="M${50-r} ${top-2} A ${r} ${r} 0 0 1 ${50+r} ${top-2}Z" fill="${gold?'#ffe27a':'#d9b44a'}" stroke="${dark}" stroke-width=".6"/><line x1="50" y1="${top-2-r}" x2="50" y2="${top-8-r}" stroke="#d9b44a" stroke-width="1"/>`; }
+    case 'spire': return `<path d="M${50-w*0.2} ${top} L50 ${top-22-pi*2} L${50+w*0.2} ${top}Z" fill="${c}" stroke="${dark}" stroke-width=".6"/><circle cx="50" cy="${top-22-pi*2}" r="1.2" fill="#ef4444" class="blink"/>`;
+    case 'antenna': return `<rect x="${x+w*0.15}" y="${top-3}" width="${w*0.7}" height="3" fill="${c}"/><line x1="50" y1="${top-3}" x2="50" y2="${top-18-pi*2}" stroke="#cbd5e1" stroke-width="1"/><circle cx="50" cy="${top-18-pi*2}" r="1.4" fill="#ef4444" class="blink"/>`;
+    case 'battle': { let s = ''; const n = Math.floor(w/6); for (let i=0;i<n;i++) s += `<rect x="${x+i*w/n}" y="${top-4}" width="${w/n*0.55}" height="4" fill="${shade(c,0)}"/>`; return s.replace(/fill="[^"]+"/g, `fill="${gold?'#ffe27a':'#a8a29e'}"`) + `<path d="M${50-6} ${top-4} L50 ${top-18-pi*2} L${50+6} ${top-4}Z" fill="${c}"/>`; }
+    case 'pyramid': return `<path d="M${x-2} ${top} L50 ${top-w*0.55} L${x+w+2} ${top}Z" fill="${c}" stroke="${dark}" stroke-width=".6"/><path d="M50 ${top-w*0.55} L${x+w+2} ${top} L${50+w*0.1} ${top}Z" fill="#000" opacity=".12"/>`;
+    case 'taper': return `<line x1="50" y1="${top}" x2="50" y2="${top-14-pi*2}" stroke="#3ef0ff" stroke-width="1.2"/><circle cx="50" cy="${top-14-pi*2}" r="1.6" fill="#ff4fd8" class="blink"/>`;
+    case 'domeTop': { const r = w*0.45; return `<path d="M${50-r} ${top} A ${r} ${r*0.8} 0 0 1 ${50+r} ${top}Z" fill="${c}" opacity=".85" stroke="${dark}" stroke-width=".6"/>`; }
+    case 'glassDome': { const r = w*0.5+2; return `<path d="M${50-r} ${top+0.5} A ${r} ${r*0.7} 0 0 1 ${50+r} ${top+0.5}Z" fill="${c}" opacity=".45" stroke="#e0fbff" stroke-width=".8"/>`; }
+    case 'crystal': return `<path d="M${50-w*0.3} ${top} L50 ${top-24-pi*2} L${50+w*0.3} ${top}Z" fill="${c}" opacity=".9" stroke="#fff" stroke-width=".6"/><path d="M50 ${top-24-pi*2} L${50+w*0.3} ${top} L50 ${top}Z" fill="#fff" opacity=".25"/>`;
+  }
+  return '';
+}
+function shade(hex, a) {
+  const n = parseInt(hex.slice(1), 16); let r = n>>16, g = n>>8&255, b = n&255;
+  const f = v => Math.max(0, Math.min(255, Math.round(a < 0 ? v*(1+a) : v + (255-v)*a)));
+  return '#' + ((1<<24) + (f(r)<<16) + (f(g)<<8) + f(b)).toString(16).slice(1);
+}
+
+// ===================== СОСТОЯНИЕ =====================
+const KEY = 'city-rng-v1';
+const fresh = () => ({ money:0, inv:[], slots:12, freeCase:1, rebirths:0, found:{}, opened:0, best:0, fast:false, auto:false, lastFree:0, last:Date.now(), totalEarned:0 });
+let S = fresh();
+try { const d = JSON.parse(localStorage.getItem(KEY)); if (d) S = Object.assign(S, d); } catch(e) {}
+const save = () => { S.last = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} };
+
+const moneyMult = () => Math.pow(2, S.rebirths);
+const luck = () => S.rebirths * 0.1;
+const FREE_CD = 180; // бесплатный ржавый кейс каждые 3 минуты
+function weights() { return RAR.map((r,i) => r.w * Math.pow(1 + luck(), i)); }
+function chances() { const w = weights(), s = w.reduce((a,b)=>a+b,0); return w.map(x => x/s); }
+function roll() { const w = weights(), s = w.reduce((a,b)=>a+b,0); let x = Math.random()*s; for (let i=0;i<w.length;i++) { x -= w[i]; if (x <= 0) return i; } return 0; }
+const itemInc = it => incomeOf(it.c, it.p) * moneyMult();
+const perSec = () => S.inv.reduce((a,it)=>a+itemInc(it), 0);
+const sellValue = it => Math.ceil(incomeOf(it.c, it.p) * 12 * moneyMult());
+const slotCost = () => Math.ceil(60 * Math.pow(1.9, S.slots - 12));
+const rebirthCost = () => 2.5e5 * Math.pow(6, S.rebirths);
+
+// ===================== ФОРМАТ =====================
+const SUF = ['', ' тыс', ' млн', ' млрд', ' трлн', ' квдрлн', ' квнтлн', ' секстлн', ' септлн', ' октлн'];
+function fmt(n) {
+  if (n < 1000) return n < 100 && n % 1 ? (Math.floor(n*10)/10).toString() : Math.floor(n).toString();
+  let i = 0; while (n >= 1000 && i < SUF.length-1) { n /= 1000; i++; }
+  return (n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : Math.floor(n)) + SUF[i];
+}
+const pct = x => x >= 0.1 ? (x*100).toFixed(0) + '%' : x >= 0.01 ? (x*100).toFixed(1) + '%' : (x*100).toFixed(2) + '%';
+const $ = id => document.getElementById(id);
+
+function cardHTML(c, p, extra = '') {
+  return `<div class="card r${p}">${art(c,p)}<div class="t">${nameOf(c,p)}</div><div class="r">${RAR[p].n}</div><div class="inc">+${fmt(incomeOf(c,p)*moneyMult())}/с</div>${extra}</div>`;
+}
+
+// ===================== КЕЙСЫ =====================
+function freeReady() { return S.freeCase > 0 || (Date.now() - S.lastFree)/1000 >= FREE_CD; }
+function buildCases() {
+  $('cases').innerHTML = CASES.map((c,i) => {
+    const lo = incomeOf(i,0)*moneyMult(), hi = incomeOf(i,5)*moneyMult();
+    return `<div class="case" data-i="${i}">
+      ${i===0 ? '<span class="free" id="freeTag" hidden>БЕСПЛАТНО</span>' : ''}
+      <button class="info" data-info="${i}" title="Что внутри">?</button>
+      <div class="box" style="background:linear-gradient(135deg, ${c.c}, ${shade(c.c,-0.4)}); box-shadow:0 6px 18px -6px ${c.c}">${c.e}</div>
+      <div class="nm">${c.n}</div>
+      <div class="rg">${fmt(lo)}–${fmt(hi)} /с</div>
+      <button class="open" data-open="${i}">${fmt(c.price)} 🪙</button>
+    </div>`;
+  }).join('');
+}
+$('cases').addEventListener('click', e => {
+  const o = e.target.closest('[data-open]'), inf = e.target.closest('[data-info]');
+  if (o) openCase(+o.dataset.open);
+  if (inf) showOdds(+inf.dataset.info);
+});
+function refreshCases() {
+  const free = freeReady();
+  document.querySelectorAll('.case').forEach(el => {
+    const i = +el.dataset.i, c = CASES[i], btn = el.querySelector('.open');
+    const isFree = i === 0 && free;
+    const can = isFree || S.money >= c.price;
+    btn.disabled = !can; el.classList.toggle('can', can);
+    el.classList.toggle('locked', !can && S.money < c.price*0.25 && !isFree);
+    if (i === 0) {
+      $('freeTag').hidden = !isFree;
+      const left = Math.ceil(FREE_CD - (Date.now() - S.lastFree)/1000);
+      btn.textContent = isFree ? '🎁 Открыть' : `${fmt(c.price)} 🪙 · 🎁 ${Math.floor(left/60)}:${String(left%60).padStart(2,'0')}`;
+    }
+  });
+}
+
+function showOdds(ci) {
+  const ch = chances();
+  $('mbox').innerHTML = `<button class="x" onclick="closeModal()">×</button><h3>${CASES[ci].e} Кейс «${CASES[ci].n}» — ${fmt(CASES[ci].price)} 🪙</h3>
+    <div class="odds">${[0,1,2,3,4,5,6].map(p => `<div>${S.found[ci+'-'+p] ? cardHTML(ci,p) : `<div class="card unk">${art(ci,p)}<div class="t">???</div><div class="r">${RAR[p].n}</div><div class="inc">+${fmt(incomeOf(ci,p)*moneyMult())}/с</div></div>`}<div class="ch">${pct(ch[p])}</div></div>`).join('')}</div>
+    <div class="mbtns"><button class="btn" onclick="closeModal(); openCase(${ci})">Открыть за ${fmt(CASES[ci].price)}</button></div>`;
+  $('modal').classList.add('show');
+}
+
+let spinning = false, autoTimer = null, lastCase = 0;
+function openCase(ci) {
+  if (spinning) return;
+  const c = CASES[ci];
+  let free = false;
+  if (ci === 0 && freeReady()) { free = true; if (S.freeCase > 0) S.freeCase--; else S.lastFree = Date.now(); }
+  else if (S.money < c.price) { toast('Не хватает монет 🪙'); stopAuto(); return; }
+  else S.money -= c.price;
+  lastCase = ci; spinning = true; S.opened++;
+  const p = roll();
+  // лента
+  const N = 46, WIN = 38, items = [];
+  for (let k=0;k<N;k++) items.push(k === WIN ? p : roll());
+  $('mbox').innerHTML = `<button class="x" onclick="closeModal()">×</button>
+    <h3>${c.e} Кейс «${c.n}» ${free ? '· бесплатно 🎁' : ''}</h3>
+    <div class="reel"><div class="strip" id="strip">${items.map(q => cardHTML(ci,q)).join('')}</div></div>
+    <div id="result"></div><div class="mbtns" id="mbtns"></div>`;
+  $('modal').classList.add('show');
+  const strip = $('strip'), reelW = strip.parentElement.clientWidth;
+  const cardW = 128; // 120 + gap 8
+  const target = WIN*cardW + 60 - reelW/2 + (Math.random()*80 - 40);
+  const dur = S.fast ? 0.9 : 4.6;
+  strip.style.transform = 'translateX(0)';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    strip.style.transition = `transform ${dur}s cubic-bezier(.08,.7,.12,1)`;
+    strip.style.transform = `translateX(${-target}px)`;
+  }));
+  setTimeout(() => reveal(ci, p), dur*1000 + 80);
+  refreshCases();
+}
+
+function reveal(ci, p) {
+  spinning = false;
+  const key = ci + '-' + p, isNew = !S.found[key];
+  S.found[key] = 1;
+  const it = { c:ci, p };
+  let note = addItem(it);
+  if (isNew) note = '✨ Новое в каталоге! ' + note;
+  $('result').innerHTML = `<div class="rname" style="color:var(--rc)" >${nameOf(ci,p)}</div>
+    <div class="rr card r${p}" style="display:inline-block;border:none;box-shadow:none;background:none;padding:0">${RAR[p].n} · <span style="color:var(--ok)">+${fmt(itemInc(it))}/с</span></div>
+    <div style="color:var(--muted);font-size:13px;margin-top:4px">${note}</div>`;
+  $('result').querySelector('.rname').style.color = getComputedStyle($('result').querySelector('.rr')).getPropertyValue('--rc');
+  $('mbtns').innerHTML = `<button class="btn" onclick="openCase(${ci})">Ещё раз · ${ci===0 && freeReady() ? 'бесплатно' : fmt(CASES[ci].price)}</button><button class="btn alt" onclick="closeModal()">Закрыть</button>`;
+  if (p >= 4) { confetti(p >= 6 ? 90 : p === 5 ? 60 : 25, p); }
+  if (p >= 5) { $('mbox').classList.remove('shake'); void $('mbox').offsetWidth; $('mbox').classList.add('shake'); }
+  if (p >= 5) toast(`${p===6?'🌟 СЕКРЕТНОЕ':'🔥 МИФИЧЕСКОЕ'}: ${nameOf(ci,p)}!`);
+  renderAll(); save();
+  if (S.auto) autoTimer = setTimeout(() => { if ($('modal').classList.contains('show')) { if (S.money >= CASES[ci].price || (ci===0 && freeReady())) openCase(ci); else { toast('Авто: монеты закончились'); } } }, p >= 5 ? 2500 : 700);
+}
+
+function addItem(it) {
+  if (S.inv.length < S.slots) { S.inv.push(it); return 'Добавлено в город'; }
+  // склад полон: меняем на худшее, если новое лучше
+  let wi = 0; S.inv.forEach((x,i) => { if (incomeOf(x.c,x.p) < incomeOf(S.inv[wi].c,S.inv[wi].p)) wi = i; });
+  const worst = S.inv[wi];
+  if (incomeOf(it.c,it.p) > incomeOf(worst.c,worst.p)) {
+    const v = sellValue(worst); S.money += v; S.inv[wi] = it;
+    return `Места нет: продано «${nameOf(worst.c,worst.p)}» за ${fmt(v)} 🪙`;
+  }
+  const v = sellValue(it); S.money += v;
+  return `Места нет, и это хуже ваших зданий: продано за ${fmt(v)} 🪙`;
+}
+
+function closeModal() { $('modal').classList.remove('show'); clearTimeout(autoTimer); }
+$('modal').addEventListener('click', e => { if (e.target.id === 'modal' && !spinning) closeModal(); });
+function stopAuto() { clearTimeout(autoTimer); }
+
+// ===================== ЗДАНИЯ =====================
+function groups() {
+  const g = {};
+  S.inv.forEach(it => { const k = it.c+'-'+it.p; (g[k] = g[k] || { c:it.c, p:it.p, n:0 }).n++; });
+  return Object.values(g).sort((a,b) => incomeOf(b.c,b.p) - incomeOf(a.c,a.p));
+}
+function renderInv() {
+  $('slots').textContent = `${S.inv.length} / ${S.slots}`;
+  $('buySlot').textContent = `+1 место · ${fmt(slotCost())} 🪙`;
+  const gs = groups();
+  $('inv').innerHTML = gs.length ? gs.map(g => cardHTML(g.c, g.p, `${g.n>1?`<div class="cnt">×${g.n}</div>`:''}<button class="sell" data-sell="${g.c}-${g.p}">Продать за ${fmt(sellValue(g))}</button>`)).join('')
+    : '<p style="color:var(--muted)">Пока пусто. Открой первый кейс — он бесплатный!</p>';
+}
+$('inv').addEventListener('click', e => {
+  const b = e.target.closest('[data-sell]'); if (!b) return;
+  const [c,p] = b.dataset.sell.split('-').map(Number);
+  const i = S.inv.findIndex(x => x.c===c && x.p===p); if (i < 0) return;
+  const v = sellValue(S.inv[i]); S.money += v; S.inv.splice(i,1); toast(`Продано за ${fmt(v)} 🪙`); renderAll();
+});
+$('buySlot').onclick = () => { const c = slotCost(); if (S.money < c) return toast('Не хватает монет'); S.money -= c; S.slots++; renderAll(); };
+$('sellWorst').onclick = () => {
+  if (!S.inv.length) return;
+  let wi = 0; S.inv.forEach((x,i) => { if (incomeOf(x.c,x.p) < incomeOf(S.inv[wi].c,S.inv[wi].p)) wi = i; });
+  const v = sellValue(S.inv[wi]); S.money += v; toast(`Продано «${nameOf(S.inv[wi].c,S.inv[wi].p)}» за ${fmt(v)}`); S.inv.splice(wi,1); renderAll();
+};
+
+function renderSkyline() {
+  const sorted = [...S.inv].sort((a,b) => incomeOf(a.c,a.p) - incomeOf(b.c,b.p));
+  // самые дорогие — в центре
+  const arr = []; sorted.forEach((it,i) => i % 2 ? arr.push(it) : arr.unshift(it));
+  $('skyline').innerHTML = arr.length ? arr.map(it => `<div class="b" title="${nameOf(it.c,it.p)}">${art(it.c,it.p,true)}</div>`).join('') : '<div class="empty">Здесь вырастет твой город 🌱</div>';
+}
+
+// ===================== КАТАЛОГ =====================
+function renderCat() {
+  const total = CASES.length*7, got = Object.keys(S.found).length;
+  $('found').textContent = `${got} / ${total}`;
+  const ch = chances();
+  $('cat').innerHTML = CASES.map((c,ci) => {
+    const n = [0,1,2,3,4,5,6].filter(p => S.found[ci+'-'+p]).length;
+    return `<h2>${c.e} ${c.n} <small>${n}/7</small></h2><div class="grid">${[0,1,2,3,4,5,6].map(p => S.found[ci+'-'+p] ? cardHTML(ci,p) :
+      `<div class="card unk">${art(ci,p)}<div class="t">???</div><div class="r">${RAR[p].n} · ${pct(ch[p])}</div></div>`).join('')}</div>`;
+  }).join('');
+}
+
+// ===================== ПЕРЕРОЖДЕНИЕ =====================
+function renderReb() {
+  const cost = rebirthCost(), can = S.money >= cost, n = S.rebirths;
+  $('reb').innerHTML = `<div class="big">♻️</div><h2 style="justify-content:center">Перерождение ${n ? `(было: ${n})` : ''}</h2>
+    <p>Снеси свой город и начни заново — но богаче и удачливее.</p>
+    <ul>
+      <li>Доход от всех зданий: <b>×${fmt(moneyMult())}</b> → <b>×${fmt(moneyMult()*2)}</b></li>
+      <li>Удача (шанс редких зданий): <b>+${Math.round(luck()*100)}%</b> → <b>+${Math.round((luck()+0.1)*100)}%</b></li>
+      <li>Шанс мифического: <b>${pct(chances()[5])}</b> → <b>${pct(chancesAt(n+1)[5])}</b></li>
+      <li>Сгорят: монеты, здания и купленные места</li>
+      <li>Останутся: каталог и все бонусы перерождений</li>
+      <li>Получишь бесплатный кейс для старта</li>
+    </ul>
+    <button class="btn" id="doReb" ${can ? '' : 'disabled'} style="width:100%;padding:14px;font-size:17px">${can ? 'Переродиться!' : `Нужно ${fmt(cost)} 🪙 (у тебя ${fmt(S.money)})`}</button>`;
+  $('doReb').onclick = () => {
+    if (S.money < rebirthCost()) return;
+    if (!confirm('Точно переродиться? Монеты и здания пропадут.')) return;
+    const keep = { rebirths:S.rebirths+1, found:S.found, opened:S.opened, fast:S.fast, auto:S.auto, totalEarned:S.totalEarned };
+    S = Object.assign(fresh(), keep);
+    toast(`♻️ Перерождение ${S.rebirths}! Доход ×${fmt(moneyMult())}`); confetti(70, 6);
+    buildCases(); renderAll(); save();
+  };
+}
+function chancesAt(n) { const w = RAR.map((r,i) => r.w*Math.pow(1+n*0.1, i)), s = w.reduce((a,b)=>a+b,0); return w.map(x=>x/s); }
+
+// ===================== ОБЩЕЕ =====================
+function renderTop() {
+  $('money').textContent = fmt(S.money) + ' 🪙';
+  $('income').textContent = '+' + fmt(perSec()) + ' / сек';
+  $('mult').textContent = S.rebirths ? `♻️ ${S.rebirths} · доход ×${fmt(moneyMult())} · удача +${Math.round(luck()*100)}%` : '';
+}
+function renderAll() { renderTop(); renderInv(); renderSkyline(); refreshCases(); if (!$('s-cat').hidden) renderCat(); if (!$('s-reb').hidden) renderReb(); }
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  ['cases','inv','cat','reb'].forEach(t => $('s-'+t).hidden = t !== b.dataset.t);
+  if (b.dataset.t === 'cat') renderCat();
+  if (b.dataset.t === 'reb') renderReb();
+});
+const tF = $('tFast'), tA = $('tAuto');
+const syncT = () => { tF.classList.toggle('on', S.fast); tA.classList.toggle('on', S.auto); };
+tF.onclick = () => { S.fast = !S.fast; syncT(); save(); };
+tA.onclick = () => { S.auto = !S.auto; syncT(); save(); if (!S.auto) stopAuto(); };
+
+let toastT;
+function toast(t) { const el = $('toast'); el.innerHTML = t; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2600); }
+function confetti(n, p) {
+  const e = p >= 6 ? ['🌟','✨','👑','💎','🪙'] : p === 5 ? ['🔥','✨','💥','🪙'] : ['✨','🪙','🎉'];
+  for (let i=0;i<n;i++) { const c = document.createElement('div'); c.className = 'conf'; c.textContent = e[i%e.length];
+    c.style.left = Math.random()*100+'vw'; c.style.animationDuration = 1.5+Math.random()*2+'s'; document.body.appendChild(c); setTimeout(()=>c.remove(), 4000); }
+}
+
+// доход, пока игрока не было (50%, до 6 часов)
+(function offline() {
+  const away = Math.min((Date.now() - S.last)/1000, 6*3600);
+  if (away > 30 && S.inv.length) { const g = perSec()*away*0.5; S.money += g; setTimeout(() => toast(`💤 Пока тебя не было, город заработал ${fmt(g)} 🪙`), 700); }
+})();
+
+let lastTick = Date.now(), refreshN = 0;
+setInterval(() => {
+  const now = Date.now(), dt = (now - lastTick)/1000; lastTick = now;
+  const g = perSec()*dt; S.money += g; S.totalEarned += g;
+  renderTop();
+  if (++refreshN % 3 === 0) { refreshCases(); if (!$('s-reb').hidden && refreshN % 9 === 0) renderReb(); }
+}, 100);
+setInterval(save, 4000);
+addEventListener('beforeunload', save);
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+
+buildCases(); syncT(); renderAll();
+if (S.opened === 0) setTimeout(() => toast('🎁 Первый кейс — бесплатно! Жми «Открыть»'), 500);
+</script>
+</body>
+</html>
